@@ -1,0 +1,12 @@
+replicaCount: 1
+environment:
+  - name: SAGE_ENV
+    value: dynamic
+  - name: SAGE_GROUP
+    value: /
+  - name: SAGE_SYSTEM
+    value: some-project
+  - name: HTTP_SERVER_PUBLIC_PORT
+    value: "8080"  
+  - name: HTTP_SERVER_INTERNAL_PORT
+    value: "8082"

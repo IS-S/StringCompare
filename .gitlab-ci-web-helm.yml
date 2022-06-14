@@ -1,0 +1,66 @@
+.some-project-web-vars: &some-project-web-vars
+  DOCKER_REGISTRY: docker-hosted.artifactory.tcsbank.ru
+  PROJECT_APP: some-project-web
+  PROJECT_FOLDER: SomeProject.Web
+  K8S_CLUSTER: dev2
+  K8S_NAMESPACE: k8s_namespace
+  IMAGE_NAME: ${DOCKER_REGISTRY}/${CI_PROJECT_NAMESPACE}/${PROJECT_APP}
+
+Push to dynamic some-project-web:
+  variables:
+    <<: *some-project-web-vars
+  extends: .push:dynamic
+
+Deploy to dynamic some-project-web:
+  variables:
+    <<: *some-project-web-vars
+    CUSTOM_VALUES_FILE: values-dynamic.yaml
+  extends: .deploy:dynamic
+  environment:
+    on_stop: Delete dynamic some-project-web
+
+Delete dynamic some-project-web:
+  variables:
+    <<: *some-project-web-vars
+  extends: .delete:dynamic
+
+Push to test some-project-web:
+  variables:
+    <<: *some-project-web-vars
+  extends: .push:test
+
+Deploy to test some-project-web:
+  variables:
+    <<: *some-project-web-vars
+    K8S_CLUSTER: dev2
+    CUSTOM_VALUES_FILE: values-test.yaml
+  extends: .deploy:test
+
+Push to production some-project-web:
+  variables:
+    <<: *some-project-web-vars
+    K8S_CLUSTER: prod
+  extends: .push:production
+
+Deploy to production some-project-web:
+  variables:
+    <<: *some-project-web-vars
+    K8S_CLUSTER: prod
+    CUSTOM_VALUES_FILE: values-production.yaml
+  extends: .deploy:production
+
+Deploy config to test some-project-web:
+  variables:
+    <<: *some-project-web-vars
+    K8S_CLUSTER: dev2
+    CUSTOM_VALUES_FILE: values-config.yaml
+    CONFIG_FILE: config/SomeProject.Web/appsettings.QA.json
+  extends: .deploy-config:test
+      
+Deploy config to production some-project-web:
+  variables:
+    <<: *some-project-web-vars
+    K8S_CLUSTER: prod
+    CUSTOM_VALUES_FILE: values-config.yaml
+    CONFIG_FILE: config/SomeProject.Web/appsettings.Prod.json
+  extends: .deploy-config:production

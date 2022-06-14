@@ -1,0 +1,199 @@
+variables:
+  DOTNET_SDK_IMAGE: docker-proxy.artifactory.tcsbank.ru/dotnet/sdk:6.0
+  OBJECTS_DIRECTORY: 'obj'
+  NUGET_PACKAGES_DIRECTORY: '.nuget'
+  SOURCE_CODE_PATH: 'src/*/*/'
+
+cache:
+  key: "$CI_JOB_STAGE-$CI_COMMIT_REF_SLUG"
+  paths:
+    - '$SOURCE_CODE_PATH$OBJECTS_DIRECTORY/project.assets.json'
+    - '$SOURCE_CODE_PATH$OBJECTS_DIRECTORY/*.csproj.nuget.*'
+    - '$NUGET_PACKAGES_DIRECTORY'
+
+stages:
+  - build
+  - push
+  - deploy
+  - finalize
+
+.sources: &sources
+  - build/**/*
+  - deploy/**/*
+  - src/**/*
+  - .gitlab*
+  - .docker*
+
+.config: &config
+  - config/**/*
+
+Build src:
+  stage: build
+  image: ${DOTNET_SDK_IMAGE}
+  variables:
+    NUGET_CERT_REVOCATION_MODE: offline
+  script:
+    - env
+    - dotnet restore src -s http://vm-nuget01.tcsbank.ru/nuget -s https://nexus.tcsbank.ru/repository/nuget.org-proxy/ --packages ${NUGET_PACKAGES_DIRECTORY}
+    - dotnet build src -c Release --no-restore
+    - dotnet test src --no-restore
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_MERGE_REQUEST_ID
+      changes: *sources
+
+Config lint:
+  stage: build
+  script:
+    - env
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_MERGE_REQUEST_ID
+      changes: *config
+
+.deploy-template:
+  image:
+    name: docker-proxy.artifactory.tcsbank.ru/alpine/k8s:1.20.7
+    entrypoint: [""]
+  before_script:
+    - |-
+      if [[ -z $EXTERNAL_KUBECONFIG ]]; then
+        echo "Using service account"
+        wget -q https://nexus-new.tcsbank.ru/repository/dist/k8s/authcli/v0.2/tklogin && chmod a+x ./tklogin || exit
+        ./tklogin --cluster=${K8S_CLUSTER} --username=${K8S_USERNAME} --password=${K8S_PASSWORD} -kp /root/.kube/config
+      else
+        echo "Using provided kubeconfig file"
+        mkdir -p /root/.kube
+        echo "$EXTERNAL_KUBECONFIG" > /root/.kube/config
+      fi
+
+.push-template:
+  image: docker-hosted.artifactory.tcsbank.ru/cicd-images/base-kaniko:v1.7.7
+  before_script:
+    - dp auth service-acc --key-file ${DP_SA_ARTIFACTORY_KEY}
+    - dp auth configure-kaniko
+
+.push:dynamic:
+  extends: .push-template
+  stage: push
+  script:
+    - executor -v debug --dockerfile build/${PROJECT_APP}.Dockerfile --context ${CI_PROJECT_DIR} --destination ${IMAGE_NAME}:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_MERGE_REQUEST_ID
+      changes: *sources
+
+.deploy:dynamic:
+  extends: .deploy-template
+  stage: deploy
+  script:
+    - cp config/${PROJECT_FOLDER}/appsettings.dynamic.json deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/appsettings.json
+    - helm upgrade --install ${PROJECT_APP}-${CI_COMMIT_REF_SLUG} deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP} --namespace ${K8S_NAMESPACE} --set "image.repository=${IMAGE_NAME}" --set "image.tag=${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}" --set "kube.cluster=${K8S_CLUSTER}" $( [[ ${CUSTOM_VALUES_FILE} ]] && printf %s -f deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/${CUSTOM_VALUES_FILE} ) --debug --wait --atomic --timeout 5m
+  environment:
+    name: "review/${PROJECT_APP}-${CI_COMMIT_REF_SLUG}"
+    auto_stop_in: 6 day
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_MERGE_REQUEST_ID
+      changes: *sources
+
+.delete:dynamic:
+  extends: .deploy-template
+  stage: finalize
+  allow_failure: true
+  retry: 2
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      when: never
+    - if: $CI_MERGE_REQUEST_ID
+      changes: *sources
+      when: manual
+  environment:
+    name: review/${PROJECT_APP}-${CI_COMMIT_REF_SLUG}
+    action: stop
+  script:
+    - helm delete ${PROJECT_APP}-${CI_COMMIT_REF_SLUG} --namespace ${K8S_NAMESPACE} 
+
+.push:test:
+  extends: .push-template
+  stage: push
+  script:
+    - executor -v debug --dockerfile build/${PROJECT_APP}.Dockerfile --context $CI_PROJECT_DIR --destination ${IMAGE_NAME}:${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA} --destination ${IMAGE_NAME}:latest
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      changes: *sources
+
+.deploy:test:
+  extends: .deploy-template
+  stage: deploy
+  script:
+    - cp config/${PROJECT_FOLDER}/appsettings.QA.json deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/appsettings.json
+    - helm upgrade --install ${PROJECT_APP} deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP} --namespace ${K8S_NAMESPACE} --set "image.repository=${IMAGE_NAME}" --set "image.tag=${CI_COMMIT_REF_SLUG}-${CI_COMMIT_SHORT_SHA}" --set "kube.cluster=${K8S_CLUSTER}" $( [[ ${CUSTOM_VALUES_FILE} ]] && printf %s -f deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/${CUSTOM_VALUES_FILE} ) --debug --wait --atomic --timeout 5m
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      changes: *sources
+
+.deploy-config:test:
+  extends: .deploy-template
+  stage: deploy
+  script:
+    - cp ${CONFIG_FILE} deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/appsettings.json
+    - helm template deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP} --debug --set "fullnameOverride=${PROJECT_APP}" $( [[ ${CUSTOM_VALUES_FILE} ]] && printf %s -f deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/${CUSTOM_VALUES_FILE} ) | kubectl --namespace ${K8S_NAMESPACE} apply -f -
+  rules:
+    - if: $CI_COMMIT_TAG
+      when: never
+    - changes: *sources
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      changes:
+        - $CONFIG_FILE
+
+.push:production:
+  extends: .push-template
+  stage: push
+  script:
+    - executor -v debug --dockerfile build/${PROJECT_APP}.Dockerfile --context $CI_PROJECT_DIR --destination ${IMAGE_NAME}:${CI_COMMIT_TAG}
+  rules:
+    - if : '$CI_COMMIT_TAG =~ /^release-.*$/ || $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+      changes: *sources
+
+.deploy:production:
+  extends: .deploy-template
+  stage: deploy
+  script:
+    - cp config/${PROJECT_FOLDER}/appsettings.Prod.json  deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/appsettings.json
+    - helm upgrade --install ${PROJECT_APP} deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP} --namespace ${K8S_NAMESPACE} --set "image.repository=${IMAGE_NAME}" --set "image.tag=${CI_COMMIT_TAG}" --set "kube.cluster=${K8S_CLUSTER}" $( [[ ${CUSTOM_VALUES_FILE} ]] && printf %s -f deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/${CUSTOM_VALUES_FILE} ) --debug --atomic --wait --timeout 5m
+  rules:
+    - if : '$CI_COMMIT_TAG =~ /^release-.*$/ || $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+/'
+      changes: *sources
+
+.deploy-config:production:
+  extends: .deploy-template
+  stage: deploy
+  script:
+    - cp ${CONFIG_FILE} deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/appsettings.json
+    - helm template deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP} --debug  --set "fullnameOverride=${PROJECT_APP}" $( [[ ${CUSTOM_VALUES_FILE} ]] && printf %s -f deploy/${CI_PROJECT_NAME}/charts/${PROJECT_APP}/${CUSTOM_VALUES_FILE} ) | kubectl --namespace ${K8S_NAMESPACE} apply -f -
+  rules:
+    - changes: *sources
+      when: never
+    - if: $CI_COMMIT_REF_NAME == $CI_DEFAULT_BRANCH
+      changes:
+        - $CONFIG_FILE

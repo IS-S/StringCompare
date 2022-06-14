@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="StackExchange.Utils.Configuration" Version="0.1.7" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.3.1" />
+    <PackageReference Include="Scrutor" Version="4.2.0" />
+    <PackageReference Include="Tinkoff.HealthChecks" Version="0.2.0" />
+    <PackageReference Include="Tinkoff.Hosting" Version="0.2.0" />
+    <PackageReference Include="Tinkoff.Logging" Version="0.1.4" />
+    <PackageReference Include="Tinkoff.Metrics" Version="0.2.1" />
+    <PackageReference Include="Tinkoff.Metrics.AspNetCore" Version="0.2.1" />
+    <PackageReference Include="Tinkoff.Tracing" Version="0.1.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\configs\SomeProject.Web\appsettings.Dynamic.json">
+      <Link>appsettings.Dynamic.json</Link>
+    </Content>
+    <Content Include="..\..\configs\SomeProject.Web\appsettings.Prod.json">
+      <Link>appsettings.Prod.json</Link>
+    </Content>
+    <Content Include="..\..\configs\SomeProject.Web\appsettings.Test.json">
+      <Link>appsettings.Test.json</Link>
+    </Content>
+    <Content Include="..\..\deploy\web\charts\some-project-web\templates\_secrets.tpl">
+      <Link>_secrets.tpl</Link>
+    </Content>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <DocumentationFile>bin\Release\SomeProject.Web.xml</DocumentationFile>
+    <NoWarn>1701;1702;;1591</NoWarn>
+  </PropertyGroup>
+</Project>

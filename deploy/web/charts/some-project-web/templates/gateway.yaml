@@ -1,0 +1,19 @@
+{{- if .Values.istio.enabled -}}
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: {{ include "some-project-web.fullname" . }}
+spec:
+  selector:
+    tinkoff.ru/istio-ingressgateway: common                       # выставляем всегда именно такой селектор
+  servers:
+  - port:
+      number: 443
+      name: {{ include "some-project-web.fullname" . }}-https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: "{{ include "some-project-web.fullname" . }}.{{ .Release.Namespace }}.v2.{{ .Values.kube.cluster }}.k8s.tcsbank.ru"   # выставляем имя секрета, полученного на предыдущем шаге
+    hosts:
+    - "{{ include "some-project-web.fullname" . }}.{{ .Release.Namespace }}.v2.{{ .Values.kube.cluster }}.k8s.tcsbank.ru" 
+{{- end }}

@@ -1,0 +1,16 @@
+{{- if .Values.istio.enabled -}}
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  labels:
+    istio-certificate: "true"
+    {{- include "some-project-web.labels" . | nindent 4 }}
+  name: {{ include "some-project-web.fullname" . }}
+spec:
+  dnsNames:
+  - {{ include "some-project-web.fullname" . }}.{{ .Release.Namespace }}.v2.{{ .Values.kube.cluster }}.k8s.tcsbank.ru
+  issuerRef:
+    kind: ClusterIssuer
+    name: certificates-issuer
+  secretName: {{ include "some-project-web.fullname" . }}.{{ .Release.Namespace }}.v2.{{ .Values.kube.cluster }}.k8s.tcsbank.ru
+{{- end }}

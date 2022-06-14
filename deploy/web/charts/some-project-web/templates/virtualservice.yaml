@@ -1,0 +1,17 @@
+{{- if .Values.istio.enabled -}}
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "some-project-web.fullname" . }}
+spec:
+  hosts:
+  - "{{ include "some-project-web.fullname" . }}.{{ .Release.Namespace }}.v2.{{ .Values.kube.cluster }}.k8s.tcsbank.ru"       # имя хоста должно совпадать с именем, указанным в Gateway (либо совпадать по префиксу, если имя в Gateway, например, *.default.v2.dev2.k8s.tcsbank.ru)
+  gateways:
+  - {{ include "some-project-web.fullname" . }}
+  http:
+    - route:
+      - destination:
+          port:
+            number: 80
+          host: {{ include "some-project-web.fullname" . }}
+{{- end }}

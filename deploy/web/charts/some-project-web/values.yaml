@@ -1,0 +1,42 @@
+replicaCount: 1
+
+image:
+  repository: docker-internal.tcsbank.ru/some-project-web
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  enabled: true
+  type: ClusterIP
+  port: 80
+  publicPort: 8080
+  internalPort: 8082
+
+podAnnotations:
+  sage/type: "json"
+  co.elastic.logs/json.add_error_key: 'true'
+  co.elastic.logs/json.keys_under_root: 'true'
+  co.elastic.logs/json.overwrite_keys: 'true'
+  vault.security.banzaicloud.io/vault-addr: 'https://vault.tcsbank.ru/'
+  vault.security.banzaicloud.io/vault-path: kubernetes-dev2
+  vault.security.banzaicloud.io/vault-role: weboffice__dev2-ro
+
+istio:
+  enabled: true
+
+deployment:
+  enabled: true
+
+imagePullSecrets:
+  - name: artifactory-cred-secret
+  
+resources:
+  limits:
+    cpu: 100m
+    memory: 100Mi
+  requests:
+    cpu: 50m
+    memory: 50Mi
+
+serviceAccount:
+  create: false

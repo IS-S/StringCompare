@@ -1,0 +1,8 @@
+istio:
+  enabled: false
+  
+deployment:
+  enabled: false
+  
+service:
+  enabled: false

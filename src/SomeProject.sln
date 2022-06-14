@@ -1,0 +1,32 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{AE89F22D-B54C-4FB8-93B8-8B08357D9ED1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SomeProject.Web.Tests", "Tests\SomeProject.Web.Tests\SomeProject.Web.Tests.csproj", "{15239245-4E50-4EBB-8508-B5E1A1C280D0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SomeProject.Web", "SomeProject.Web\SomeProject.Web.csproj", "{332F8CA8-54DB-4D98-BED5-21ABBC4C65EB}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Build", "Build", "{D4A639E9-E085-42E1-97EE-02E0B0F36681}"
+	ProjectSection(SolutionItems) = preProject
+		..\build\some-project-web.Dockerfile = ..\build\some-project-web.Dockerfile
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{15239245-4E50-4EBB-8508-B5E1A1C280D0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{15239245-4E50-4EBB-8508-B5E1A1C280D0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{15239245-4E50-4EBB-8508-B5E1A1C280D0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{15239245-4E50-4EBB-8508-B5E1A1C280D0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{332F8CA8-54DB-4D98-BED5-21ABBC4C65EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{332F8CA8-54DB-4D98-BED5-21ABBC4C65EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{332F8CA8-54DB-4D98-BED5-21ABBC4C65EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{332F8CA8-54DB-4D98-BED5-21ABBC4C65EB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{15239245-4E50-4EBB-8508-B5E1A1C280D0} = {AE89F22D-B54C-4FB8-93B8-8B08357D9ED1}
+	EndGlobalSection
+EndGlobal
