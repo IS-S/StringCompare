@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using stringCompare.Core;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Threading.Tasks;
 
 namespace stringCompare.Controllers
@@ -18,8 +19,13 @@ namespace stringCompare.Controllers
 
         [HttpPost]
         [Route("strings")]
-        public ActionResult<CompareResult> PostStrings(datainStr Data)
+        public ActionResult<CompareResult> PostStrings(datainStrModel Data)
         {
+
+            if (!ModelState.IsValid)
+            {
+                return BadRequest();
+            }
 
             var result = _comparemanager.Compare(Data.stringOne, Data.stringTwo);
             
@@ -28,8 +34,13 @@ namespace stringCompare.Controllers
         }
         [HttpPost]
         [Route("lists")]
-        public ActionResult<List<string>> PostLists(datainLst Data)
+        public ActionResult<List<string>> PostLists(datainLstModel Data)
         {
+
+            if(!ModelState.IsValid)
+            {
+                return BadRequest();
+            }
 
             List<string> res = new();
 
@@ -77,15 +88,21 @@ namespace stringCompare.Controllers
         }
     }
 
-    public class datainStr
+    public class datainStrModel
     {
+        [Required]
         public string stringOne { get; set; }
+        [Required]
         public string stringTwo { get; set; }
     }
-    public class datainLst
+    public class datainLstModel
     {
+        [Required]
         public List<string> listOne { get; set; }
+        [Required]
         public List<string> listTwo { get; set; }
+        [Required]
+        [Range(1, 2)]
         public int namesPriorityList { get; set; }
     }
 }
